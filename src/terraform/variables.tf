@@ -2,11 +2,15 @@ variable "project_root" {
   type = string
 }
 
-variable "hostname" {
+variable "cluster_name" {
   type = string
 }
 
 variable "domain" {
+  type = string
+}
+
+variable "workers" {
   type = string
 }
 
@@ -16,6 +20,11 @@ variable "remote_ovf_url" {
 
 variable "ssh_authorized_keys" {
   type = list
+}
+
+variable "worker_count" {
+  type = string
+  default = 0
 }
 
 variable "cpus" {
@@ -78,9 +87,11 @@ variable "kurl_script" {
 }
 
 locals {
-  server_name    = "${var.hostname}.${var.domain}"
+  vm_prefix      = "${var.cluster_name}"
+  server_name    = "${var.cluster_name}.${var.domain}"
   vsphere_folder = "${var.vsphere_datacenter}/vm/${var.vsphere_folder}"
   directories = {
     work = "${var.project_root}/work"
+    secrets = "${var.project_root}/secrets"
   }
 }

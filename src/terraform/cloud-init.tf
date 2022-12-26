@@ -3,7 +3,6 @@ data "carvel_ytt" "user_data" {
     "${var.project_root}/src/cloud-init"
   ]
   values = {
-    "hostname" = var.hostname
     "domain" = var.domain
     "ssh.authorized_key" = var.ssh_authorized_keys.0
   }
