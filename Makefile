@@ -66,8 +66,8 @@ clean:
 
 .PHONY: encrypt
 encrypt: 
-	secrets encrypt $(shell basename $(params_yaml))
+	@sops --encrypt --in-place $(params_yaml)
 
 .PHONY: decrypt
 decrypt: 
-	secrets decrypt $(shell basename $(params_yaml))
+	@sops --decrypt --in-place $(params_yaml)
