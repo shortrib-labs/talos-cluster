@@ -1,6 +1,6 @@
-# vSphere kURL Node
+# vSphere kURL Cluster
 
-Easily create a Kubernetes node on vSphere using [kURL](https://kurl.sh)
+Easily create a Kubernetes cluster on vSphere using [kURL](https://kurl.sh)
 and [Terraform](https://terraform.io)
 
 ## Goals and Audience
@@ -36,21 +36,22 @@ of the file is documented in the file
 Copy the redacted version to `params.yaml` and edit as apporpriate 
 to connect to your cluster, specify the size of your node, etc.
 
-## Creating a Node
+## Creating a Cluster
 
 The cluster is created using [Terraform](https://terraform.io), but
 there's `Makefile` to make basic operations easier. Creating a
 cluster with the latest versions from kURL is as simple as
 
 ```shell
-$ make node
+$ make cluster
 ```
 
-The output at the end will show the IP address for your node so
+The output at the end will show the IP address for your control plane node so
 that you can connect to it.
 
-By default, the node is created as a single node cluster with
-the latest kURL installer. To use a custom kURL installer, 
+By default, the node is created as a multi-node cluster with
+the latest kURL installer. The cluster has as single control plane
+node and 2 workers. To use a custom kURL installer, 
 including a KOTS install with an embedded cluster, set the 
 variable `kurl_script`, for example, to use the latest k3s:
 
@@ -70,17 +71,17 @@ $ make destroy
 ## Protecting Secrets
 
 There are some secrts in the `params.yaml` file, and I don't like
-losing track of them so I put them in my repo. I've got a little 
-helper script that I use for secrets management, and it's in the
-`bin` directory. 
+losing track of them so I put them in my repo. They are managed
+with [SOPS](https://github.com/mozilla/sops)
 
 The script is written in Python and uses a couple of libraries
 to make it a bit more ergonomic. If you want to manage your secrets
 in the repositroy as well, you'll need to fork this repo and make
-sure you have a GPG key. You can run `pip install -r requirement.txt`
-to make sure the script dependencies are in place.
+changes to the SOPS configuration in `.sops.yaml` (and put your
+public key into `.sops.pub.asc`).
 
-Once the script is in place, use
+There are a couple of `make` targets to facilitate working with
+the encrypted file.
 
 ```shell
 $ make encrypt
