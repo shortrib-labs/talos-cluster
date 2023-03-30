@@ -1,6 +1,6 @@
-# vSphere k0s Cluster
+# vSphere Talos Cluster
 
-Easily create a Kubernetes cluster on vSphere using [k0s](https://k0sproject.io)
+Easily create a Kubernetes cluster on vSphere using [Talos](https://talos.dev)
 and [Terraform](https://terraform.io)
 
 ## Goals and Audience
@@ -9,7 +9,8 @@ I created this project as a simple way to spin up a single-node kURL
 cluster on my home lab so that I could play with [KOTS](https://kots.io).
 As I worked with it, I realized I could use to create multi-node
 clusters. Then I learned about k0s and decided to see if I could adapt
-what I was doing to building k0s clusters.
+what I was doing to building k0s clusters. After that, I was hooked
+on seeing what types of clusters I could build. Now onto Talos.
 
 The initial audience was me and my peers at Replicated, but I think
 anyone working needing small clusters in a Lab environment could find
@@ -27,7 +28,7 @@ it use full.
 * Direnv
 * SOPS (for secrets management)
 * GPG (for SOPS)
-* [`k0sctl`](https://github.com/k0sproject/k0sctl#installation)
+* [`talosctl`](https://github.com/k0sproject/k0sctl#installation)
 
 ## Customizing for Your Environment
 
@@ -52,14 +53,8 @@ The output at the end will show the IP address for your control plane node so
 that you can connect to it.
 
 By default, the node is created as a multi-node cluster with
-the latest kURL installer. The cluster has as single control plane
-node and 2 workers. To use a custom kURL installer, 
-including a KOTS install with an embedded cluster, set the 
-variable `kurl_script`, for example, to use the latest k3s:
-
-```shell
-$ make node kurl_script="curl https://kurl.sh/k3s | sudo bash"
-```
+the latest Talos installer. The cluster has as single control plane
+node and 2 workers. 
 
 ## Destroying the Cluster
 
