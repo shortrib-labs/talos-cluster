@@ -8,7 +8,7 @@ cluster_name				 = "$(cluster_name)"
 domain					 = "$(shell yq e .domain $(params_yaml))"
 project_root		 = "$(PROJECT_DIR)"
 
-remote_ovf_url	 = "$(shell yq .remote_ovf_url $(params_yaml))"
+cluster_image_name	 = "$(shell yq .cluster_image_name $(params_yaml))"
 
 ssh_authorized_keys = $(shell yq --output-format json .ssh.authorized_keys $(params_yaml))
 users = "$(shell yq --output-format json .users $(params_yaml) | sed 's/"/\\"/g')"
@@ -26,19 +26,13 @@ load_balancer_cidr	  = "$(shell yq .cluster.load_balancer_cidr $(params_yaml))"
 enable_gvisor = "$(shell yq '.cluster.runtimes.gvisor.enabled // false' $(params_yaml))"
 enable_wasm = "$(shell yq '.cluster.runtimes.wasm.enabled // false' $(params_yaml))"
 
-vsphere_server    = "$(shell yq .vsphere.server $(params_yaml))"
-vsphere_username  = "$(shell yq .vsphere.username $(params_yaml))"
-vsphere_password  = "$(shell sops --decrypt --extract '["vsphere"]["password"]' $(params_yaml))"
-
-vsphere_datacenter		= "$(shell yq .vsphere.datacenter $(params_yaml))"
-vsphere_cluster				= "$(shell yq .vsphere.cluster $(params_yaml))"
-vsphere_host					= "$(shell yq .vsphere.host $(params_yaml))"
-vsphere_resource_pool = "$(shell yq .vsphere.resource_pool $(params_yaml))"
-
-kubernetes_network	  = "$(shell yq .vsphere.kubernetes_network $(params_yaml))"
-workload_network	  = "$(shell yq .vsphere.workload_network $(params_yaml))"
-vsphere_datastore = "$(shell yq .vsphere.datastore $(params_yaml))"
-vsphere_folder	  = "$(shell yq .vsphere.folder $(params_yaml))"
+nutanix_username = "$(shell yq .nutanix.username $(params_yaml))"
+nutanix_password = "$(shell sops --decrypt --extract '["nutanix"]["password"]' $(params_yaml))"
+nutanix_prism_central = "$(shell yq .nutanix.prism_central $(params_yaml))"
+nutanix_cluster_name = "$(shell yq .nutanix.cluster $(params_yaml))"
+nutanix_storage_container = "$(shell yq .nutanix.storage_container $(params_yaml))"
+kubernetes_subnet = "$(shell yq .nutanix.subnets.kubernetes $(params_yaml))"
+workload_subnet = "$(shell yq .nutanix.subnets.workload $(params_yaml))"
 
 tailscale_client_id = "$(shell sops --decrypt --extract '["tailscale"]["client_id"]' $(params_yaml))"
 tailscale_client_secret = "$(shell sops --decrypt --extract '["tailscale"]["client_secret"]' $(params_yaml))"
@@ -68,7 +62,7 @@ cluster: nodes
 	@k0sctl kubeconfig --config ${SECRETS_DIR}/k0sctl.yaml > ${SECRETS_DIR}/kubeconfig
 	@export KUBECONFIG=${SECRETS_DIR}/kubeconfig
 	@tailscale configure kubeconfig $(cluster_name)-operator
-	@yq -i '.contexts[] |= (select(.name == "$(cluster_name)-operator.walrus-shark.ts.net").name = "tailscale-auth@$(cluster_name)" // .) | .contexts[] |= (select(.name == "$(cluster_name)").name = "$(cluster_name)-admin@$(cluster_name)" // .) | .contexts[] |= (select(.context.user == "admin").context.user = "$(cluster_name)-admin" // .) | .users[] |= (select(.name == "admin").name = "$(cluster_name)-admin" // .) | .current-context = "$(cluster_name)-admin"' ${SECRETS_DIR}/kubeconfig
+	@yq -i '.contexts[] |= (select(.name == "$(cluster_name)-operator.walrus-shark.ts.net").name = "tailscale-auth@$(cluster_name)" // .) | .contexts[] |= (select(.name == "$(cluster_name)").name = "$(cluster_name)-admin@$(cluster_name)" // .) | .contexts[] |= (select(.context.user == "admin").context.user = "$(cluster_name)-admin" // .) | .users[] |= (select(.name == "admin").name = "$(cluster_name)-admin" // .) | .current-context = "$(cluster_name)-admin@$(cluster_name)"' ${SECRETS_DIR}/kubeconfig
 	@rm -rf work/manifests
 
 .PHONY: test
