@@ -24,30 +24,50 @@ variable "cluster_image_name" {
   type = string
 }
 
-variable "ssh_authorized_keys" {
-  type = list(any)
-}
-
-variable "users" {
-  type = string
-}
-
 variable "control_plane_cidr" {
-  type = string
+  type        = string
+  description = "IPv4 CIDR for control plane nodes"
+}
+
+variable "control_plane_cidr_v6" {
+  type        = string
+  default     = ""
+  description = "IPv6 CIDR for control plane nodes (optional)"
 }
 
 variable "load_balancer_cidr" {
   type = string
 }
 
-variable "enable_gvisor" {
-  type    = bool
-  default = false
+variable "load_balancer_cidr_v6" {
+  type        = string
+  default     = ""
+  description = "IPv6 CIDR for load balancer addresses (optional)"
 }
 
-variable "enable_wasm" {
-  type    = bool
-  default = false
+# Cluster networking
+variable "pod_cidr" {
+  type        = string
+  default     = "10.244.0.0/16"
+  description = "IPv4 CIDR for pod network"
+}
+
+variable "pod_cidr_v6" {
+  type        = string
+  default     = "fd00:10:244::/48"
+  description = "IPv6 CIDR for pod network"
+}
+
+variable "service_cidr" {
+  type        = string
+  default     = "10.96.0.0/12"
+  description = "IPv4 CIDR for service network"
+}
+
+variable "service_cidr_v6" {
+  type        = string
+  default     = "fd00:10:96::/112"
+  description = "IPv6 CIDR for service network"
 }
 
 variable "cpus" {
@@ -108,19 +128,21 @@ variable "control_plane_mac" {
   description = "MAC addresses for control plane nodes"
 }
 
-variable "tailscale_client_id" {
-  type = string
+# cert-manager / ACME configuration
+variable "acme_email" {
+  type        = string
+  description = "Email address for ACME certificate notifications"
 }
 
-variable "tailscale_client_secret" {
-  type = string
+variable "cloudflare_api_token" {
+  type        = string
+  description = "Cloudflare API token for DNS-01 challenges"
+  sensitive   = true
 }
-
 
 locals {
   vm_prefix   = var.cluster_name
   server_name = "${var.cluster_name}.${var.domain}"
-  users       = jsondecode(var.users)
   directories = {
     secrets   = "${var.project_root}/secrets"
     manifests = "${var.project_root}/manifests"

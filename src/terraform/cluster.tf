@@ -1,37 +1,119 @@
-resource "local_sensitive_file" "k0sctl" {
-  content = templatefile("${local.directories.templates}/k0sctl.tftpl",
-    {
-      user = local.users.1.name
+# Talos cluster configuration
 
-      cluster_name     = var.cluster_name
-      cluster_fqdn     = local.server_name
-      controllers      = [for controller in data.nutanix_virtual_machine.control_plane : controller.nic_list[0].ip_endpoint_list[0].ip]
-      first_controller = data.nutanix_virtual_machine.control_plane.0.nic_list[0].ip_endpoint_list[0].ip
-      workers          = [for worker in data.nutanix_virtual_machine.worker : worker.nic_list[0].ip_endpoint_list[0].ip]
+locals {
+  # Build subnet lists, filtering out empty IPv6 values
+  pod_subnets     = compact([var.pod_cidr, var.pod_cidr_v6])
+  service_subnets = compact([var.service_cidr, var.service_cidr_v6])
 
-      enable_gvisor = var.enable_gvisor
-      enable_wasm   = var.enable_wasm
-
-      work_dir     = local.directories.work
-      manifest_dir = local.directories.manifests
-
-      nutanix_prism_central     = var.nutanix_prism_central
-      nutanix_username          = var.nutanix_username
-      nutanix_password          = var.nutanix_password
-      nutanix_storage_container = var.nutanix_storage_container
-
-      tailscale_client_id     = var.tailscale_client_id
-      tailscale_client_secret = var.tailscale_client_secret
+  # Cluster network config patch
+  cluster_network_patch = yamlencode({
+    cluster = {
+      network = {
+        podSubnets     = local.pod_subnets
+        serviceSubnets = local.service_subnets
+      }
+      apiServer = {
+        certSANs = compact([local.server_name])
+      }
     }
-  )
-  filename = "${local.directories.secrets}/k0sctl.yaml"
+    machine = {
+      kubelet = {
+        nodeIP = {
+          validSubnets = compact([var.control_plane_cidr, var.control_plane_cidr_v6])
+        }
+      }
+    }
+  })
+
+  # Machine features patch (enable host DNS)
+  machine_features_patch = yamlencode({
+    machine = {
+      features = {
+        hostDNS = {
+          enabled              = true
+          forwardKubeDNSToHost = true
+        }
+      }
+    }
+  })
 }
 
-resource "local_sensitive_file" "user-data" {
-  content  = local.user_data
-  filename = "${local.directories.secrets}/user-data.yaml"
+# Generate Talos machine secrets
+resource "talos_machine_secrets" "this" {}
+
+# Generate control plane machine configuration
+data "talos_machine_configuration" "controlplane" {
+  cluster_name     = var.cluster_name
+  cluster_endpoint = "https://${local.server_name}:6443"
+  machine_type     = "controlplane"
+  machine_secrets  = talos_machine_secrets.this.machine_secrets
 }
 
+# Generate worker machine configuration
+data "talos_machine_configuration" "worker" {
+  cluster_name     = var.cluster_name
+  cluster_endpoint = "https://${local.server_name}:6443"
+  machine_type     = "worker"
+  machine_secrets  = talos_machine_secrets.this.machine_secrets
+}
+
+# Generate client configuration for talosctl
+data "talos_client_configuration" "this" {
+  cluster_name         = var.cluster_name
+  client_configuration = talos_machine_secrets.this.client_configuration
+  endpoints            = [for vm in data.nutanix_virtual_machine.control_plane : vm.nic_list[0].ip_endpoint_list[0].ip]
+}
+
+# Apply configuration to control plane nodes
+resource "talos_machine_configuration_apply" "controlplane" {
+  count                       = var.controllers
+  client_configuration        = talos_machine_secrets.this.client_configuration
+  machine_configuration_input = data.talos_machine_configuration.controlplane.machine_configuration
+  node                        = data.nutanix_virtual_machine.control_plane[count.index].nic_list[0].ip_endpoint_list[0].ip
+  config_patches = [
+    local.cluster_network_patch,
+    local.machine_features_patch,
+    yamlencode({
+      machine = {
+        install = { disk = "/dev/sda" }
+      }
+    })
+  ]
+}
+
+# Apply configuration to worker nodes
+resource "talos_machine_configuration_apply" "worker" {
+  count                       = var.workers
+  client_configuration        = talos_machine_secrets.this.client_configuration
+  machine_configuration_input = data.talos_machine_configuration.worker.machine_configuration
+  node                        = data.nutanix_virtual_machine.worker[count.index].nic_list[0].ip_endpoint_list[0].ip
+  config_patches = [
+    local.cluster_network_patch,
+    local.machine_features_patch,
+    yamlencode({
+      machine = {
+        install = { disk = "/dev/sda" }
+      }
+    })
+  ]
+}
+
+# Bootstrap the first control plane node
+resource "talos_machine_bootstrap" "this" {
+  depends_on = [talos_machine_configuration_apply.controlplane]
+
+  client_configuration = talos_machine_secrets.this.client_configuration
+  node                 = data.nutanix_virtual_machine.control_plane[0].nic_list[0].ip_endpoint_list[0].ip
+}
+
+# Retrieve kubeconfig after bootstrap
+resource "talos_cluster_kubeconfig" "this" {
+  depends_on           = [talos_machine_bootstrap.this]
+  client_configuration = talos_machine_secrets.this.client_configuration
+  node                 = data.nutanix_virtual_machine.control_plane[0].nic_list[0].ip_endpoint_list[0].ip
+}
+
+# Nutanix CSI configuration
 resource "local_sensitive_file" "nutanix_csi_secret" {
   content = templatefile("${local.directories.templates}/nutanix-csi-secret.yaml.tftpl", {
     prism_endpoint    = var.nutanix_prism_central
