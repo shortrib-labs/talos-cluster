@@ -35,16 +35,6 @@ variable "control_plane_cidr_v6" {
   description = "IPv6 CIDR for control plane nodes (optional)"
 }
 
-variable "load_balancer_cidr" {
-  type = string
-}
-
-variable "load_balancer_cidr_v6" {
-  type        = string
-  default     = ""
-  description = "IPv6 CIDR for load balancer addresses (optional)"
-}
-
 # Cluster networking
 variable "pod_cidr" {
   type        = string
@@ -128,25 +118,10 @@ variable "control_plane_mac" {
   description = "MAC addresses for control plane nodes"
 }
 
-# cert-manager / ACME configuration
-variable "acme_email" {
-  type        = string
-  description = "Email address for ACME certificate notifications"
-}
-
-variable "cloudflare_api_token" {
-  type        = string
-  description = "Cloudflare API token for DNS-01 challenges"
-  sensitive   = true
-}
-
 locals {
   vm_prefix   = var.cluster_name
   server_name = "${var.cluster_name}.${var.domain}"
   directories = {
-    secrets   = "${var.project_root}/secrets"
-    manifests = "${var.project_root}/manifests"
-    templates = "${path.module}/templates"
-    work      = "${var.project_root}/work"
+    secrets = "${var.project_root}/secrets"
   }
 }

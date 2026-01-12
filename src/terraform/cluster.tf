@@ -1,26 +1,15 @@
 # Talos cluster configuration
 
 locals {
-  # Build subnet lists, filtering out empty IPv6 values
-  pod_subnets     = compact([var.pod_cidr, var.pod_cidr_v6])
-  service_subnets = compact([var.service_cidr, var.service_cidr_v6])
-
-  # Cluster network config patch
+  # Cluster network config patch - IPv4 only
   cluster_network_patch = yamlencode({
     cluster = {
       network = {
-        podSubnets     = local.pod_subnets
-        serviceSubnets = local.service_subnets
+        podSubnets     = [var.pod_cidr]
+        serviceSubnets = [var.service_cidr]
       }
       apiServer = {
-        certSANs = compact([local.server_name])
-      }
-    }
-    machine = {
-      kubelet = {
-        nodeIP = {
-          validSubnets = compact([var.control_plane_cidr, var.control_plane_cidr_v6])
-        }
+        certSANs = [local.server_name]
       }
     }
   })
@@ -111,33 +100,4 @@ resource "talos_cluster_kubeconfig" "this" {
   depends_on           = [talos_machine_bootstrap.this]
   client_configuration = talos_machine_secrets.this.client_configuration
   node                 = data.nutanix_virtual_machine.control_plane[0].nic_list[0].ip_endpoint_list[0].ip
-}
-
-# Nutanix CSI configuration
-resource "local_sensitive_file" "nutanix_csi_secret" {
-  content = templatefile("${local.directories.templates}/nutanix-csi-secret.yaml.tftpl", {
-    prism_endpoint    = var.nutanix_prism_central
-    nutanix_username  = var.nutanix_username
-    nutanix_password  = var.nutanix_password
-    storage_container = var.nutanix_storage_container
-  })
-  filename        = "${local.directories.work}/manifests/01-nutanix-csi-secret.yaml"
-  file_permission = "0600"
-}
-
-resource "local_sensitive_file" "nutanix_storageclass" {
-  content = templatefile("${local.directories.templates}/nutanix-storageclass.yaml.tftpl", {
-    storage_container = var.nutanix_storage_container
-  })
-  filename        = "${local.directories.work}/manifests/02-nutanix-storageclass.yaml"
-  file_permission = "0600"
-}
-
-resource "local_sensitive_file" "ip_address_pool" {
-  content = templatefile("${local.directories.templates}/default-ipaddresspool.yaml.tftpl",
-    {
-      load_balancer_cidr = var.load_balancer_cidr
-    }
-  )
-  filename = "${local.directories.work}/manifests/00-default-ipaddresspool.yaml"
 }

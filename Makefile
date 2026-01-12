@@ -19,9 +19,10 @@ disk_size = "$(shell yq .node.disk_size $(params_yaml))"
 control_plane_cidr    = "$(shell yq .cluster.control_plane_cidr $(params_yaml))"
 control_plane_cidr_v6 = "$(shell yq '.cluster.control_plane_cidr_v6 // ""' $(params_yaml))"
 control_plane_mac     = $(shell yq --output-format json .cluster.control_plane_mac $(params_yaml))
-load_balancer_cidr    = "$(shell yq .cluster.load_balancer_cidr $(params_yaml))"
-load_balancer_cidr_v6 = "$(shell yq '.cluster.load_balancer_cidr_v6 // ""' $(params_yaml))"
-
+pod_cidr              = "$(shell yq '.cluster.pod_cidr // "10.244.0.0/16"' $(params_yaml))"
+pod_cidr_v6           = "$(shell yq '.cluster.pod_cidr_v6 // "fd00:10:244::/48"' $(params_yaml))"
+service_cidr          = "$(shell yq '.cluster.service_cidr // "10.96.0.0/12"' $(params_yaml))"
+service_cidr_v6       = "$(shell yq '.cluster.service_cidr_v6 // "fd00:10:96::/112"' $(params_yaml))"
 
 nutanix_username          = "$(shell yq .nutanix.username $(params_yaml))"
 nutanix_password          = "$(shell sops --decrypt --extract '["nutanix"]["password"]' $(params_yaml))"
@@ -30,9 +31,6 @@ nutanix_cluster_name      = "$(shell yq .nutanix.cluster $(params_yaml))"
 nutanix_storage_container = "$(shell yq .nutanix.storage_container $(params_yaml))"
 kubernetes_subnet         = "$(shell yq .nutanix.subnets.kubernetes $(params_yaml))"
 workload_subnet           = "$(shell yq .nutanix.subnets.workload $(params_yaml))"
-
-acme_email           = "$(shell yq .acme.email $(params_yaml))"
-cloudflare_api_token = "$(shell sops --decrypt --extract '["cloudflare"]["api_token"]' $(params_yaml))"
 endef
 
 .PHONY: tfvars
@@ -52,7 +50,6 @@ nodes: $(tfvars)
 
 .PHONY: cluster
 cluster: nodes
-	@mkdir -p ${WORK_DIR}/manifests
 	@cd ${SOURCE_DIR}/terraform && terraform output -raw talosconfig > ${SECRETS_DIR}/talosconfig
 	@cd ${SOURCE_DIR}/terraform && terraform output -raw kubeconfig > ${SECRETS_DIR}/kubeconfig
 
