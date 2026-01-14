@@ -128,6 +128,18 @@ variable "nutanix_files_export" {
   description = "NFS export path on Nutanix Files"
 }
 
+# Tailscale
+variable "tailscale_client_id" {
+  type        = string
+  description = "Tailscale OAuth client ID for the operator"
+}
+
+variable "tailscale_client_secret" {
+  type        = string
+  description = "Tailscale OAuth client secret for the operator"
+  sensitive   = true
+}
+
 locals {
   vm_prefix   = var.cluster_name
   server_name = "${var.cluster_name}.${var.domain}"

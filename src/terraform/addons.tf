@@ -56,12 +56,10 @@ resource "helm_release" "traefik" {
   wait_for_jobs    = true
   timeout          = 600
 
-  set = [
-    {
-      name = "crds.enabled"
-      type = "auto"
-      value = true
-    }
+  values = [<<-YAML
+    crds:
+      enabled: true
+  YAML
   ]
 }
 
@@ -77,12 +75,10 @@ resource "helm_release" "cert-manager" {
   wait_for_jobs    = true
   timeout          = 600
 
-  set = [
-    {
-      name = "crds.enabled"
-      type = "auto"
-      value = true
-    }
+  values = [<<-YAML
+    crds:
+      enabled: true
+  YAML
   ]
 }
 
@@ -130,4 +126,26 @@ resource "kubectl_manifest" "nfs-storageclass" {
   depends_on = [helm_release.csi-driver-nfs]
 }
 
+resource "helm_release" "tailscale_operator" {
+  name             = "tailscale-operator"
+  repository       = "https://pkgs.tailscale.com/helmcharts"
+  chart            = "tailscale-operator"
+  namespace        = "tailscale"
+  create_namespace = true
+  wait             = true
+  wait_for_jobs    = true
+  timeout          = 600
 
+  values = [<<-YAML
+    operatorConfig:
+      hostname: ${var.cluster_name}-operator
+    oauth:
+      clientId: ${var.tailscale_client_id}
+      clientSecret: ${var.tailscale_client_secret}
+    apiServerProxyConfig:
+      mode: "true"
+  YAML
+  ]
+
+  depends_on = [data.talos_cluster_health.this]
+}

@@ -35,6 +35,9 @@ workload_subnet           = "$(shell yq .nutanix.subnets.workload $(params_yaml)
 
 nutanix_files_server      = "$(shell yq .nutanix.files.server $(params_yaml))"
 nutanix_files_export      = "$(shell yq .nutanix.files.export $(params_yaml))"
+
+tailscale_client_id       = "$(shell yq .tailscale.client_id $(params_yaml))"
+tailscale_client_secret   = "$(shell sops --decrypt --extract '["tailscale"]["client_secret"]' $(params_yaml))"
 endef
 
 .PHONY: tfvars
