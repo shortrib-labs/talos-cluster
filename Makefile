@@ -32,6 +32,9 @@ nutanix_cluster_name      = "$(shell yq .nutanix.cluster $(params_yaml))"
 nutanix_storage_container = "$(shell yq .nutanix.storage_container $(params_yaml))"
 kubernetes_subnet         = "$(shell yq .nutanix.subnets.kubernetes $(params_yaml))"
 workload_subnet           = "$(shell yq .nutanix.subnets.workload $(params_yaml))"
+
+nutanix_files_server      = "$(shell yq .nutanix.files.server $(params_yaml))"
+nutanix_files_export      = "$(shell yq .nutanix.files.export $(params_yaml))"
 endef
 
 .PHONY: tfvars

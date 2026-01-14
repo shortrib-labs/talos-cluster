@@ -117,10 +117,22 @@ variable "control_plane_mac" {
   description = "MAC addresses for control plane nodes"
 }
 
+# Nutanix Files (NFS)
+variable "nutanix_files_server" {
+  type        = string
+  description = "Nutanix Files server hostname or IP"
+}
+
+variable "nutanix_files_export" {
+  type        = string
+  description = "NFS export path on Nutanix Files"
+}
+
 locals {
   vm_prefix   = var.cluster_name
   server_name = "${var.cluster_name}.${var.domain}"
   directories = {
-    secrets = "${var.project_root}/secrets"
+    secrets   = "${var.project_root}/secrets"
+    templates = "${var.project_root}/src/terraform/templates"
   }
 }
