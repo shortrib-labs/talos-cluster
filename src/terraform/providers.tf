@@ -8,7 +8,32 @@ terraform {
       source  = "siderolabs/talos"
       version = "~> 0.7"
     }
+    helm = {
+      source  = "hashicorp/helm"
+      version = "~> 3.0.0"
+    }
+    kubectl = {
+      source  = "alekc/kubectl"
+      version = "~> 2.0"
+    }
   }
+}
+
+provider "helm" {
+  kubernetes = {
+    host                   = talos_cluster_kubeconfig.this.kubernetes_client_configuration.host
+    client_certificate     = base64decode(talos_cluster_kubeconfig.this.kubernetes_client_configuration.client_certificate)
+    client_key             = base64decode(talos_cluster_kubeconfig.this.kubernetes_client_configuration.client_key)
+    cluster_ca_certificate = base64decode(talos_cluster_kubeconfig.this.kubernetes_client_configuration.ca_certificate)
+  }
+}
+
+provider "kubectl" {
+  host                   = talos_cluster_kubeconfig.this.kubernetes_client_configuration.host
+  client_certificate     = base64decode(talos_cluster_kubeconfig.this.kubernetes_client_configuration.client_certificate)
+  client_key             = base64decode(talos_cluster_kubeconfig.this.kubernetes_client_configuration.client_key)
+  cluster_ca_certificate = base64decode(talos_cluster_kubeconfig.this.kubernetes_client_configuration.ca_certificate)
+  load_config_file       = false
 }
 
 provider "nutanix" {

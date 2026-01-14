@@ -24,15 +24,14 @@ variable "cluster_image_name" {
   type = string
 }
 
-variable "control_plane_cidr" {
+variable "kubernetes_cidr" {
   type        = string
-  description = "IPv4 CIDR for control plane nodes"
+  description = "CIDR for the Kubernetes management network (used for etcd and kubelet node IP)"
 }
 
-variable "control_plane_cidr_v6" {
+variable "load_balancer_cidr" {
   type        = string
-  default     = ""
-  description = "IPv6 CIDR for control plane nodes (optional)"
+  description = "CIDR for the workload network (used for etcd and kubelet node IP)"
 }
 
 # Cluster networking

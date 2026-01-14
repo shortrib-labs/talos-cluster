@@ -13,11 +13,12 @@ cluster_image_name   = "$(shell yq .cluster_image_name $(params_yaml))"
 controllers = "$(shell yq .cluster.controllers $(params_yaml))"
 workers     = "$(shell yq .cluster.workers $(params_yaml))"
 
-cpus      = "$(shell yq .node.cpus $(params_yaml))"
-memory    = "$(shell yq .node.memory $(params_yaml))"
-disk_size = "$(shell yq .node.disk_size $(params_yaml))"
-control_plane_cidr    = "$(shell yq .cluster.control_plane_cidr $(params_yaml))"
-control_plane_cidr_v6 = "$(shell yq '.cluster.control_plane_cidr_v6 // ""' $(params_yaml))"
+cpus        = "$(shell yq .node.cpus $(params_yaml))"
+memory      = "$(shell yq .node.memory $(params_yaml))"
+disk_size   = "$(shell yq .node.disk_size $(params_yaml))"
+
+kubernetes_cidr       = "$(shell yq .cluster.kubernetes_cidr $(params_yaml))"
+load_balancer_cidr    = "$(shell yq .cluster.load_balancer_cidr $(params_yaml))"
 control_plane_mac     = $(shell yq --output-format json .cluster.control_plane_mac $(params_yaml))
 pod_cidr              = "$(shell yq '.cluster.pod_cidr // "10.244.0.0/16"' $(params_yaml))"
 pod_cidr_v6           = "$(shell yq '.cluster.pod_cidr_v6 // "fd00:10:244::/48"' $(params_yaml))"
