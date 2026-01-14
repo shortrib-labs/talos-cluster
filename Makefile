@@ -59,6 +59,9 @@ nodes: $(tfvars)
 cluster: nodes
 	@cd ${SOURCE_DIR}/terraform && terraform output -raw talosconfig > ${SECRETS_DIR}/talosconfig
 	@cd ${SOURCE_DIR}/terraform && terraform output -raw kubeconfig > ${SECRETS_DIR}/kubeconfig
+	@export KUBECONFIG=${SECRETS_DIR}/kubeconfig && tailscale configure kubeconfig $(cluster_name)-operator
+	@yq -i '.contexts[] |= (select(.name == "$(cluster_name)-operator.walrus-shark.ts.net").name = "tailscale-auth@$(cluster_name)" // .) | .contexts[] |= (select(.name == "admin@$(cluster_name)").name = "$(cluster_name)-admin@$(cluster_name)" // .) | .contexts[] |= (select(.context.user == "admin").context.user = "$(cluster_name)-admin" // .) | .users[] |= (select(.name == "admin").name = "$(cluster_name)-admin" // .) | .current-context = "$(cluster_name)-admin@$(cluster_name)"' ${SECRETS_DIR}/kubeconfig
+	@rm -rf work/manifests
 
 .PHONY: test
 test: $(tfvars)
