@@ -1,0 +1,14 @@
+sendkeys_timeout: 0
+session: talos
+windows:
+- name: zsh
+  root: /home/crdant/workspace/talos-cluster
+  panes:
+  - commands:
+    - claude --dangerously-skip-permissions --resume
+  layout: tiled
+- name: nvim
+  root: /home/crdant/workspace/talos-cluster
+  commands:
+    - nvim
+
