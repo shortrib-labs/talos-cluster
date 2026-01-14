@@ -4,34 +4,37 @@ params_yaml := ${SECRETS_DIR}/params.yaml
 cluster_name := $(shell yq .cluster_name $(params_yaml))
 
 define TFVARS
-cluster_name				 = "$(cluster_name)"
-domain					 = "$(shell yq e .domain $(params_yaml))"
-project_root		 = "$(PROJECT_DIR)"
+cluster_name         = "$(cluster_name)"
+domain               = "$(shell yq e .domain $(params_yaml))"
+project_root         = "$(PROJECT_DIR)"
 
-remote_ovf_url	 = "$(shell yq .remote_ovf_url $(params_yaml))"
-
-ssh_authorized_keys = $(shell yq --output-format json .ssh.authorized_keys $(params_yaml))
-users = "$(shell yq --output-format json .users $(params_yaml) | sed 's/"/\\"/g')"
+cluster_image_name   = "$(shell yq .cluster_image_name $(params_yaml))"
 
 controllers = "$(shell yq .cluster.controllers $(params_yaml))"
 workers     = "$(shell yq .cluster.workers $(params_yaml))"
 
-cpus			= "$(shell yq .node.cpus $(params_yaml))"
-memory		= "$(shell yq .node.memory $(params_yaml))"
-disk_size = "$(shell yq .node.disk_size $(params_yaml))"
+cpus        = "$(shell yq .node.cpus $(params_yaml))"
+memory      = "$(shell yq .node.memory $(params_yaml))"
+disk_size   = "$(shell yq .node.disk_size $(params_yaml))"
 
-vsphere_server    = "$(shell yq .vsphere.server $(params_yaml))"
-vsphere_username  = "$(shell yq .vsphere.username $(params_yaml))"
-vsphere_password  = "$(shell sops --decrypt --extract '["vsphere"]["password"]' $(params_yaml))"
+kubernetes_cidr       = "$(shell yq .cluster.kubernetes_cidr $(params_yaml))"
+load_balancer_cidr    = "$(shell yq .cluster.load_balancer_cidr $(params_yaml))"
+control_plane_mac     = $(shell yq --output-format json .cluster.control_plane_mac $(params_yaml))
+pod_cidr              = "$(shell yq '.cluster.pod_cidr // "10.244.0.0/16"' $(params_yaml))"
+pod_cidr_v6           = "$(shell yq '.cluster.pod_cidr_v6 // "fd00:10:244::/48"' $(params_yaml))"
+service_cidr          = "$(shell yq '.cluster.service_cidr // "10.96.0.0/12"' $(params_yaml))"
+service_cidr_v6       = "$(shell yq '.cluster.service_cidr_v6 // "fd00:10:96::/112"' $(params_yaml))"
 
-vsphere_datacenter		= "$(shell yq .vsphere.datacenter $(params_yaml))"
-vsphere_cluster				= "$(shell yq .vsphere.cluster $(params_yaml))"
-vsphere_host					= "$(shell yq .vsphere.host $(params_yaml))"
-vsphere_resource_pool = "$(shell yq .vsphere.resource_pool $(params_yaml))"
+nutanix_username          = "$(shell yq .nutanix.username $(params_yaml))"
+nutanix_password          = "$(shell sops --decrypt --extract '["nutanix"]["password"]' $(params_yaml))"
+nutanix_prism_central     = "$(shell yq .nutanix.prism_central $(params_yaml))"
+nutanix_cluster_name      = "$(shell yq .nutanix.cluster $(params_yaml))"
+nutanix_storage_container = "$(shell yq .nutanix.storage_container $(params_yaml))"
+kubernetes_subnet         = "$(shell yq .nutanix.subnets.kubernetes $(params_yaml))"
+workload_subnet           = "$(shell yq .nutanix.subnets.workload $(params_yaml))"
 
-vsphere_network	  = "$(shell yq .vsphere.network $(params_yaml))"
-vsphere_datastore = "$(shell yq .vsphere.datastore $(params_yaml))"
-vsphere_folder	  = "$(shell yq .vsphere.folder $(params_yaml))"
+nutanix_files_server      = "$(shell yq .nutanix.files.server $(params_yaml))"
+nutanix_files_export      = "$(shell yq .nutanix.files.export $(params_yaml))"
 endef
 
 .PHONY: tfvars
@@ -45,14 +48,14 @@ $(tfvars): $(params_yaml)
 init: $(tfvars)
 	@(cd $(SOURCE_DIR)/terraform && terraform init)
 
-.PHONY: create
+.PHONY: nodes
 nodes: $(tfvars)
 	@(cd ${SOURCE_DIR}/terraform && terraform apply -var-file $(tfvars) --auto-approve)
 
 .PHONY: cluster
 cluster: nodes
-	@k0sctl apply --config ${SECRETS_DIR}/k0sctl.yaml
-	@k0sctl kubeconfig --config ${SECRETS_DIR}/k0sctl.yaml > ${SECRETS_DIR}/kubeconfig
+	@cd ${SOURCE_DIR}/terraform && terraform output -raw talosconfig > ${SECRETS_DIR}/talosconfig
+	@cd ${SOURCE_DIR}/terraform && terraform output -raw kubeconfig > ${SECRETS_DIR}/kubeconfig
 
 .PHONY: test
 test: $(tfvars)

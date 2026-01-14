@@ -1,15 +1,46 @@
 terraform {
   required_providers {
-    carvel = {
-      source = "vmware-tanzu/carvel"
+    nutanix = {
+      source  = "nutanix/nutanix"
+      version = "~> 2.3"
+    }
+    talos = {
+      source  = "siderolabs/talos"
+      version = "~> 0.7"
+    }
+    helm = {
+      source  = "hashicorp/helm"
+      version = "~> 3.0.0"
+    }
+    kubectl = {
+      source  = "alekc/kubectl"
+      version = "~> 2.0"
     }
   }
 }
 
-provider "vsphere" {
-  user           = var.vsphere_username
-  password       = var.vsphere_password
-  vsphere_server = var.vsphere_server
+provider "helm" {
+  kubernetes = {
+    host                   = talos_cluster_kubeconfig.this.kubernetes_client_configuration.host
+    client_certificate     = base64decode(talos_cluster_kubeconfig.this.kubernetes_client_configuration.client_certificate)
+    client_key             = base64decode(talos_cluster_kubeconfig.this.kubernetes_client_configuration.client_key)
+    cluster_ca_certificate = base64decode(talos_cluster_kubeconfig.this.kubernetes_client_configuration.ca_certificate)
+  }
+}
 
-  allow_unverified_ssl = true
+provider "kubectl" {
+  host                   = talos_cluster_kubeconfig.this.kubernetes_client_configuration.host
+  client_certificate     = base64decode(talos_cluster_kubeconfig.this.kubernetes_client_configuration.client_certificate)
+  client_key             = base64decode(talos_cluster_kubeconfig.this.kubernetes_client_configuration.client_key)
+  cluster_ca_certificate = base64decode(talos_cluster_kubeconfig.this.kubernetes_client_configuration.ca_certificate)
+  load_config_file       = false
+}
+
+provider "nutanix" {
+  username     = var.nutanix_username
+  password     = var.nutanix_password
+  endpoint     = var.nutanix_prism_central
+  port         = 9440
+  insecure     = true # For self-signed certificates
+  wait_timeout = 60
 }
