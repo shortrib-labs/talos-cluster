@@ -64,6 +64,7 @@ resource "nutanix_virtual_machine" "control_plane" {
 
 # Fetch VMs after creation to get assigned IPs
 data "nutanix_virtual_machine" "control_plane" {
-  count = var.controllers
-  vm_id = nutanix_virtual_machine.control_plane[count.index].id
+  count      = var.controllers
+  vm_id      = nutanix_virtual_machine.control_plane[count.index].id
+  depends_on = [time_sleep.wait_for_dhcp]
 }

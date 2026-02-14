@@ -61,7 +61,9 @@ resource "nutanix_virtual_machine" "worker" {
   }
 }
 
+# Fetch VMs after creation to get assigned IPs
 data "nutanix_virtual_machine" "worker" {
-  count = var.workers
-  vm_id = nutanix_virtual_machine.worker[count.index].id
+  count      = var.workers
+  vm_id      = nutanix_virtual_machine.worker[count.index].id
+  depends_on = [time_sleep.wait_for_dhcp]
 }

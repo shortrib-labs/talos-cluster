@@ -55,12 +55,6 @@ resource "helm_release" "traefik" {
   wait             = true
   wait_for_jobs    = true
   timeout          = 600
-
-  values = [<<-YAML
-    crds:
-      enabled: true
-  YAML
-  ]
 }
 
 
