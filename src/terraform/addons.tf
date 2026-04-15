@@ -114,7 +114,8 @@ resource "kubectl_manifest" "nfs-storageclass" {
     reclaimPolicy: Delete
     volumeBindingMode: Immediate
     mountOptions:
-      - nfsvers=4.1
+      - nfsvers=3
+      - nolock
   YAML
 
   depends_on = [helm_release.csi-driver-nfs]

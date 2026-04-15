@@ -36,6 +36,25 @@ locals {
     }
   })
 
+  # Install patch - disk + NFS extension for CSI driver
+  # Combined into single patch to ensure proper merge
+  install_patch = yamlencode({
+    machine = {
+      install = {
+        disk = "/dev/sda"
+        extensions = [
+          { image = "ghcr.io/siderolabs/nfs-utils:v0.1.1" }
+        ]
+      }
+      kernel = {
+        modules = [
+          { name = "nfs" },
+          { name = "nfsv4" }
+        ]
+      }
+    }
+  })
+
   # Machine features patch - configure default route and DNS
   # DHCP isn't providing a default route, so we add one explicitly via interface config
   machine_features_patch = yamlencode({
@@ -120,11 +139,7 @@ resource "talos_machine_configuration_apply" "controlplane" {
     local.cluster_network_patch,
     local.controlplane_patch,
     local.machine_features_patch,
-    yamlencode({
-      machine = {
-        install = { disk = "/dev/sda" }
-      }
-    })
+    local.install_patch,
   ]
 }
 
@@ -137,11 +152,7 @@ resource "talos_machine_configuration_apply" "worker" {
   config_patches = [
     local.cluster_network_patch,
     local.machine_features_patch,
-    yamlencode({
-      machine = {
-        install = { disk = "/dev/sda" }
-      }
-    })
+    local.install_patch,
   ]
 }
 
