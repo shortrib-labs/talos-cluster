@@ -33,11 +33,13 @@ nutanix_storage_container = "$(shell yq .nutanix.storage_container $(params_yaml
 kubernetes_subnet         = "$(shell yq .nutanix.subnets.kubernetes $(params_yaml))"
 workload_subnet           = "$(shell yq .nutanix.subnets.workload $(params_yaml))"
 
-nutanix_files_server      = "$(shell yq .nutanix.files.server $(params_yaml))"
-nutanix_files_export      = "$(shell yq .nutanix.files.export $(params_yaml))"
-
 tailscale_client_id       = "$(shell yq .tailscale.client_id $(params_yaml))"
 tailscale_client_secret   = "$(shell sops --decrypt --extract '["tailscale"]["client_secret"]' $(params_yaml))"
+
+seaweedfs_filer_address  = "$(shell yq '.seaweedfs.filer_address // ""' $(params_yaml))"
+seaweedfs_client_ca_crt  = "$(shell yq '.seaweedfs.client_tls.ca_crt // "" | @base64' $(params_yaml))"
+seaweedfs_client_tls_crt = "$(shell yq '.seaweedfs.client_tls.tls_crt // "" | @base64' $(params_yaml))"
+seaweedfs_client_tls_key = "$(shell sops --decrypt $(params_yaml) | yq '.seaweedfs.client_tls.tls_key // "" | @base64')"
 endef
 
 .PHONY: tfvars

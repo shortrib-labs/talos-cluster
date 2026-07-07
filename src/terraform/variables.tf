@@ -117,17 +117,6 @@ variable "control_plane_mac" {
   description = "MAC addresses for control plane nodes"
 }
 
-# Nutanix Files (NFS)
-variable "nutanix_files_server" {
-  type        = string
-  description = "Nutanix Files server hostname or IP"
-}
-
-variable "nutanix_files_export" {
-  type        = string
-  description = "NFS export path on Nutanix Files"
-}
-
 # Tailscale
 variable "tailscale_client_id" {
   type        = string
@@ -138,6 +127,36 @@ variable "tailscale_client_secret" {
   type        = string
   description = "Tailscale OAuth client secret for the operator"
   sensitive   = true
+}
+
+# SeaweedFS (external RWX storage via CSI)
+variable "seaweedfs_filer_address" {
+  type        = string
+  default     = ""
+  description = "host:port of the external SeaweedFS filer (e.g. 10.0.0.5:8888). Empty disables the SeaweedFS CSI driver."
+}
+
+# Mutual gRPC TLS to the filer via a client cert pre-issued by the storage
+# cluster's seaweed CA. Provide all three values to enable; leave empty to run
+# the driver without client TLS. Params hold raw PEM; the Makefile base64-encodes
+# each into these variables (which therefore carry base64) for the Secret's data.
+variable "seaweedfs_client_ca_crt" {
+  type        = string
+  default     = ""
+  description = "base64(PEM) of the seaweed CA cert, used to verify the filer (WEED_GRPC_CA). Raw PEM in params."
+}
+
+variable "seaweedfs_client_tls_crt" {
+  type        = string
+  default     = ""
+  description = "base64(PEM) of this cluster's client certificate. Raw PEM in params."
+}
+
+variable "seaweedfs_client_tls_key" {
+  type        = string
+  default     = ""
+  sensitive   = true
+  description = "base64(PEM) of the client private key. Raw PEM in params (SOPS-encrypted)."
 }
 
 locals {
