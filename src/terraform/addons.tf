@@ -31,7 +31,7 @@ resource "helm_release" "metallb" {
 }
 
 resource "kubectl_manifest" "l2_advertisement" {
-  yaml_body = file("manifests/metallb-config/l2advertisement.yaml")
+  yaml_body  = file("manifests/metallb-config/l2advertisement.yaml")
   depends_on = [helm_release.metallb]
 }
 
@@ -77,48 +77,13 @@ resource "helm_release" "cert-manager" {
 }
 
 resource "kubectl_manifest" "shortrib-clusterissuer" {
-  yaml_body = file("manifests/acme/00-shortrib-clusterissuer.yaml")
+  yaml_body  = file("manifests/acme/00-shortrib-clusterissuer.yaml")
   depends_on = [helm_release.cert-manager]
 }
 
 resource "kubectl_manifest" "letsencrypt-clusterissuer" {
-  yaml_body = file("manifests/acme/01-letsencrypt-clusterissuer.yaml")
+  yaml_body  = file("manifests/acme/01-letsencrypt-clusterissuer.yaml")
   depends_on = [helm_release.cert-manager]
-}
-
-# NFS CSI Driver (for Nutanix Files)
-resource "helm_release" "csi-driver-nfs" {
-  name             = "csi-driver-nfs"
-  repository       = "https://raw.githubusercontent.com/kubernetes-csi/csi-driver-nfs/master/charts"
-  chart            = "csi-driver-nfs"
-  namespace        = "kube-system"
-  wait             = true
-  wait_for_jobs    = true
-  timeout          = 600
-
-  depends_on = [data.talos_cluster_health.this]
-}
-
-resource "kubectl_manifest" "nfs-storageclass" {
-  yaml_body = <<-YAML
-    apiVersion: storage.k8s.io/v1
-    kind: StorageClass
-    metadata:
-      name: nutanix-files
-      annotations:
-        storageclass.kubernetes.io/is-default-class: "true"
-    provisioner: nfs.csi.k8s.io
-    parameters:
-      server: ${var.nutanix_files_server}
-      share: ${var.nutanix_files_export}
-    reclaimPolicy: Delete
-    volumeBindingMode: Immediate
-    mountOptions:
-      - nfsvers=3
-      - nolock
-  YAML
-
-  depends_on = [helm_release.csi-driver-nfs]
 }
 
 resource "helm_release" "tailscale_operator" {
@@ -143,4 +108,77 @@ resource "helm_release" "tailscale_operator" {
   ]
 
   depends_on = [data.talos_cluster_health.this]
+}
+
+locals {
+  # The CSI driver runs whenever a filer address is set. Mutual gRPC TLS is
+  # layered on when a pre-issued client cert is supplied. The seaweed CA lives
+  # on the storage cluster; this cluster only holds a client cert it presents.
+  seaweedfs_enabled         = var.seaweedfs_filer_address != ""
+  seaweedfs_tls_secret_name = "seaweedfs-csi-tls"
+
+  seaweedfs_use_tls = (
+    local.seaweedfs_enabled &&
+    var.seaweedfs_client_tls_crt != "" &&
+    var.seaweedfs_client_tls_key != "" &&
+    var.seaweedfs_client_ca_crt != ""
+  )
+}
+
+# Pre-issued client cert for mutual gRPC TLS, signed by the seaweed CA on the
+# storage cluster. ca.crt and tls.crt are public; tls.key is SOPS-encrypted.
+# Params hold raw PEM; the Makefile base64-encodes each (yq @base64) so these
+# values drop straight into the Secret's data.
+resource "kubectl_manifest" "seaweedfs_client_tls" {
+  count = local.seaweedfs_use_tls ? 1 : 0
+
+  yaml_body = <<-YAML
+    apiVersion: v1
+    kind: Secret
+    metadata:
+      name: ${local.seaweedfs_tls_secret_name}
+      namespace: kube-system
+    type: Opaque
+    data:
+      ca.crt: ${var.seaweedfs_client_ca_crt}
+      tls.crt: ${var.seaweedfs_client_tls_crt}
+      tls.key: ${var.seaweedfs_client_tls_key}
+  YAML
+
+  depends_on = [data.talos_cluster_health.this]
+}
+
+# SeaweedFS CSI driver - provides RWX (ReadWriteMany) volumes backed by an
+# external SeaweedFS filer running on a separate storage cluster. The SeaweedFS
+# servers and operator live on that storage cluster, not here; this cluster is
+# only a consumer. Skipped entirely unless a filer address is configured.
+#
+# Runs in kube-system: the node and mount DaemonSets are privileged (FUSE +
+# hostPID), and kube-system is not Pod-Security enforced. Provides the default
+# "seaweedfs" StorageClass (SeaweedFS replaces the removed Nutanix Files/NFS).
+#
+# With TLS enabled, the driver presents the client cert for mutual gRPC TLS to
+# the filer (WEED_GRPC_CLIENT_CERT/KEY/CA), reading tls.crt/tls.key/ca.crt from
+# the secret above.
+resource "helm_release" "seaweedfs_csi_driver" {
+  count = local.seaweedfs_enabled ? 1 : 0
+
+  name          = "seaweedfs-csi-driver"
+  repository    = "https://seaweedfs.github.io/seaweedfs-csi-driver/helm"
+  chart         = "seaweedfs-csi-driver"
+  namespace     = "kube-system"
+  wait          = true
+  wait_for_jobs = true
+  timeout       = 600
+
+  values = [yamlencode(merge(
+    {
+      seaweedfsFiler        = var.seaweedfs_filer_address
+      storageClassName      = "seaweedfs"
+      isDefaultStorageClass = true
+    },
+    local.seaweedfs_use_tls ? { tlsSecret = local.seaweedfs_tls_secret_name } : {}
+  ))]
+
+  depends_on = [data.talos_cluster_health.this, kubectl_manifest.seaweedfs_client_tls]
 }
